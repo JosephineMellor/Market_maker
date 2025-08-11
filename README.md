@@ -16,4 +16,13 @@ Some simple market making simulations in python.
 <p align="center">
   <img src="results1.png" alt="PnL of simple market maker in volatile market" width="350" />
 </p>
-<p align="center"><em>Figure 1: PnL over Time in Volatile Market</em></p>
+<p align="center"><em>Figure 2: PnL over Time in Volatile Market</em></p>
+
+## Modelling random Market Shock
+- A random increase or decrease in Mid Price as a shock (red line in plot).
+- Probability of Bid/Ask being filled now directly dependent on the distance from Mid Price.
+- PnL plotted with penalty for increased risk (particularly high or low inventory).
+  <p align="center">
+  <img src="summary_plot.png" alt="Market shock" width="350" />
+</p>
+<p align="center"><em>Figure 3: Mid Price, Inventory and Weighted PnL over Time during a shock in the market</em></p>

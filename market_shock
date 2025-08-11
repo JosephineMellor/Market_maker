@@ -1,0 +1,196 @@
+import numpy as np
+import pandas as pd
+import random
+import matplotlib.pyplot as plt
+
+
+"""
+Market maker simulation with a random shock:
+- mid price is a normally distributed random walk with increased sd halfway through for volitility
+- shock in the midprice, either increase in price or decrease randomly.
+- the bid/ask is filled with probability of 30% each time unless inventory exceeds 10 or -10
+- track inventory, cash and PnL, then plot PnL at the end with a penalty for increased risk (high/low inventory)
+"""
+
+
+# ------ set up class MarketMaker ------
+
+class MarketMaker:
+
+    #set up our initial parameters
+    def __init__(self , initial_price , spread , steps, inventory_penalty , fill_sensitivity , skew_sensitivity , shock_strength , shock_placement):
+        self.ip = initial_price
+        self.spread = spread
+        self.steps = steps
+        self.inventory_penalty = inventory_penalty
+        self.fill_sensitivity = fill_sensitivity
+        self.skew_sensitivity = skew_sensitivity
+        self.shock_strength = shock_strength
+        self.shock_placement = shock_placement
+    
+
+
+    #set up the simulation
+    def simulate(self):
+        #set up time steps
+        time_steps = np.zeros(self.steps)
+        for i in range(self.steps):
+            time_steps[i] = i+1
+
+
+        # ----- want to simulate a random walk for mid price updates with volitility increases half-way through------
+
+        #the mid price is a random walk with normal distribution 
+        #sd 0.2 for the first half
+        random_values1 = np.random.normal(loc = 0, scale = 0.2 , size = self.steps//2)
+        #sd 0.5 for the second half to model increased volitility
+        random_values2 = np.random.normal(loc = 0, scale = 0.5 , size = self.steps - (self.steps//2))
+
+        #then, concatenate the two random walks
+        random_values = np.concatenate((random_values1, random_values2))
+
+        #set up random walk
+        midprice = np.cumsum(random_values)
+
+        #then need to add 100 to every element
+        midprice += self.ip
+
+        #add a market shock
+        up_or_down = np.random.choice([-1,1])
+        for i in range(self.shock_placement , self.steps):
+            midprice[i] += self.shock_strength * up_or_down
+
+        # ----- set up our quoting at each timstep ------
+
+        #want to set up arrays for our bids and asks
+        bid_price = np.zeros(self.steps)
+        ask_price = np.zeros(self.steps)
+        bid_filled = np.zeros(self.steps)
+        ask_filled = np.zeros(self.steps)
+        inventory = np.zeros(self.steps)
+
+
+        # ------ order fill simulation ------
+
+        #include the bill and ask price in this loop as it is now dependent on inventory (with skew)
+
+        #model the probability that the bid/ask is filled, 0 indicates False and 1, True
+        #also, track the working inventory at each timestep i
+
+
+        bid_price[0] = midprice[0] - self.spread/2 #bid for first time step
+        ask_price[0] = midprice[0] + self.spread/2 #ask for first time step
+
+
+        #then make them True with probability proportional to distance from the midprice 
+        #we will do this independently (2 seperate random ints)
+
+        #do the first step independent of inventory 
+        if np.random.rand() < max(np.exp(-self.fill_sensitivity * abs(midprice[0] - bid_price[0])), 1e-6):
+            bid_filled[0] = 1
+
+        if np.random.rand() < max(np.exp(-self.fill_sensitivity * abs(midprice[0] - ask_price[0])), 1e-6):
+            ask_filled[0] = 1
+        
+        inventory[0] = bid_filled[0] - ask_filled[0]
+        
+
+
+        #then, we can loop over all i
+        for i in range(1,self.steps):
+
+            #adjust the prices based on the inventory
+            adjustment = self.skew_sensitivity * inventory[i-1]
+
+            #quotes
+            bid_price[i] = midprice[i] - self.spread/2 + adjustment#bid
+            ask_price[i] = midprice[i] + self.spread/2 + adjustment#ask
+
+            # Ensure quotes do not cross
+            if bid_price[i] >= ask_price[i]:
+                mid = midprice[i] + adjustment
+                bid_price[i] = mid - self.spread / 2
+                ask_price[i] = mid + self.spread / 2
+
+            #bid filled?  
+            if inventory[i-1] < 10 and np.random.rand() < max(1e-6 , np.exp(-self.fill_sensitivity * abs(midprice[i] - bid_price[i]))):
+                bid_filled[i] = 1
+            #ask filled?
+            if inventory[i-1] > -10 and np.random.rand() < max(1e-6 , np.exp(-self.fill_sensitivity * abs(midprice[i] - ask_price[i]))):
+                ask_filled[i] = 1
+
+            #update inventory
+            inventory[i] = inventory[i-1] + bid_filled[i] - ask_filled[i]
+
+
+
+        # ------ track cash and PnL ------
+
+        #store the amount of cash held at each time step
+        step_cash = np.zeros(self.steps)
+        cash = np.zeros(self.steps)
+
+        for i in range(self.steps):
+            step_cash[i] = (-bid_filled[i] * bid_price[i]) + (ask_filled[i] * ask_price[i])
+            if i == 0:
+                cash[i] = step_cash[i]
+            else:
+                cash[i] = cash[i-1] + step_cash[i]
+
+        #then, finally, calculate the PnL, adding a penalty if the size of the inventory gets large
+        PnL = np.zeros(self.steps)
+        for i in range(self.steps):
+            PnL[i] = cash[i] + inventory[i]*midprice[i] - self.inventory_penalty * inventory[i]**2
+            
+
+        # ------ set up pandas dataframe ------
+
+        #set up data frame
+        df = pd.DataFrame({ 'Time step': time_steps , 'Mid price': midprice , 'Bid price': bid_price , 'Ask price': ask_price , 'Inventory': inventory , 'Cash': cash , 'PnL': PnL})
+
+        #save it to the specified file
+        df.to_csv('results1.csv', index=False)
+
+
+        # ------ set up final results -------
+
+        self.time_steps = time_steps
+        self.midprice = midprice
+        self.bid_price = bid_price
+        self.ask_price = ask_price
+        self.bid_filled = bid_filled
+        self.ask_filled = ask_filled
+        self.inventory = inventory
+        self.cash = cash
+        self.PnL = PnL
+        self.df = df
+
+
+    #plot to matplotlib graph
+
+    def plot_pnl(self):
+        # plt.plot(self.time_steps, self.PnL)
+        # plt.scatter(self.time_steps, self.PnL, c='r')
+        # plt.grid()
+        # plt.savefig('results1.png')
+        plt.subplot(3,1,1); plt.plot(self.midprice); plt.axvline(self.steps//2, color='red', linestyle='--', label='Shock'); plt.title("Mid Price")
+        plt.subplot(3,1,2); plt.plot(self.inventory); plt.title("Inventory")
+        plt.subplot(3,1,3); plt.plot(self.PnL); plt.title("PnL")
+        plt.tight_layout()
+        plt.savefig("summary_plot.png")
+
+
+
+# ------ now we can run the simulation --------
+
+Market1 = MarketMaker(100 , 0.2 , 100 , 0.1 , 10 , 1 , 3 , 50)
+Market1.simulate()
+Market1.df.head()
+Market1.plot_pnl()
+
+
+# ------ little sanity check -------
+
+print(f"Final Inventory: {Market1.inventory[-1]}")
+print(f"Final Cash: {Market1.cash[-1]}")
+print(f"Final PnL: {Market1.PnL[-1]}")

@@ -125,7 +125,7 @@ class MarketMaker:
         plt.plot(self.time_steps, self.PnL)
         plt.scatter(self.time_steps, self.PnL, c='r')
         plt.grid()
-        plt.savefig('results1.png')
+        plt.savefig('results2.png')
 
 
 

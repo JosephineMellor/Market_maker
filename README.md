@@ -7,6 +7,7 @@ Some simple market making simulations in python.
 <p align="center">
   <img src="results2.png" alt="PnL of simple market maker" width="350" />
 </p>
+
 ## Modelling Market Volitilty
 - mid price is a normally distributed random walk with increased sd halfway through for volitility
 - the spread takes a constant value

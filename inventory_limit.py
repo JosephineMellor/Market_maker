@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 VERY basic market maker simulation:
 - mid price is a normally distributed random walk
 - the spread takes a constant value
-- the bid/ask is filled with probability of 30% each time
+- the bid/ask is filled with probability of 30% each time unless inventory exceeds 10 or -10
 - track inventory, cash and PnL, then plot PnL at the end
 """
 

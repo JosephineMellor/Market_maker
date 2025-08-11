@@ -7,11 +7,13 @@ Some simple market making simulations in python.
 <p align="center">
   <img src="results2.png" alt="PnL of simple market maker" width="350" />
 </p>
+<p align="center"><em>Figure 1: PnL over Time</em></p>
 
 ## Modelling Market Volitilty
-- mid price is a normally distributed random walk with increased sd halfway through for volitility
-- the spread takes a constant value
-- the bid/ask is filled with probability of 30% each time unless inventory exceeds 10 or -10
+- Mid Price is a normally distributed random walk with increased standard deviation halfway through for modelling volitility.
+- Spread takes a constant value.
+- Bid/Ask is filled with probability of 30% each time unless inventory exceeds 10 or -10, then remains unfilled.
 <p align="center">
-  <img src="results1.png" alt="PnL of simple market maker" width="350" />
+  <img src="results1.png" alt="PnL of simple market maker in volatile market" width="350" />
 </p>
+<p align="center"><em>Figure 1: PnL over Time in Volatile Market</em></p>
